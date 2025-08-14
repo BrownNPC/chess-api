@@ -3,92 +3,85 @@ package server
 
 import (
 	"api/db"
-	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"regexp"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type RegisterAccountRequest struct {
-	Username string
-	Password string
+// User is the representation of a user account that will be returned by the api
+type User struct {
+	UserID    int64     `json:"userId" example:"12"`
+	Username  string    `json:"username" example:"JohnDoe"`
+	CreatedAt time.Time `json:"createdAt" format:"date-time"`
+}
+
+// UserCredentials are the required credentials to make a an account and log in.
+type UserCredentials struct {
+	Username string `json:"username" minLength:"4" maxLength:"20" example:"JohnDoe"`
+	Password string `json:"password" minLength:"3" example:"Password123"`
 }
 
 // Create an account using provided username and password.
 // respond String if error, status created + no body if success
 //
 //	@Summary		Create an account
-//	@Description	Create an account using provided username and password
+//	@Description	Create an account using provided username and password.
+//	@Description	Username can be between 3-20 characters.
+//	@Description	Password must ba at least 3 characters.
+//
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
-//	@Param			payload	body	RegisterAccountRequest	true	"Register Account"
-//	@Success		201
-//	@Failure		400	{string}	string	"Malformed credentials"
-//	@Failure		409	{string}	string	"Username already exists"
-//	@Failure		500
-//
+//	@Param			payload	body		UserCredentials	true	"Register Account"
+//	@Success		201		{object}	User
+//	@Failure		400		{object}	ErrorReason	"Unallowed credentials"
+//	@Failure		409		{object}	ErrorReason	"Username already exists"
+//	@Failure		500		{object}	ErrorReason
 //	@Router			/users [post]
-func (s *Server) RegisterAccount(c echo.Context) error {
-	var req RegisterAccountRequest
-
+func (s Server) RegisterAccount(c echo.Context) error {
+	var req UserCredentials
 	if err := c.Bind(&req); err != nil {
-		return c.String(http.StatusBadRequest, "Json body contains syntax error")
+		return c.JSON(http.StatusBadRequest, Reason("Json body contains syntax error"))
 	}
+	// validate username
 	if err := ValidateUsername(req.Username); err != nil {
-		return c.String(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, Reason(err.Error()))
 	}
+	// validate password
 	if err := ValidatePassword(req.Password); err != nil {
-		return c.String(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, Reason(err.Error()))
 	}
 	// check if username already exists
 	user, err := s.DB.GetUserByUsername(c.Request().Context(), req.Username)
 	if user.Username != "" {
-		return c.String(http.StatusConflict, "Username already taken")
+		return c.JSON(http.StatusConflict, Reason("Username already taken"))
 	}
-
+	// generate password hash
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		slog.Error("Failed to hash password", "password", req.Password, "error", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return c.JSON(http.StatusInternalServerError, Reason("internal server error"))
 	}
-
-	_, err = s.DB.CreateUser(c.Request().Context(), db.CreateUserParams{
+	// create user in the database
+	user, err = s.DB.CreateUser(c.Request().Context(), db.CreateUserParams{
 		Username:     req.Username,
 		PasswordHash: string(passwordHash),
 	})
 	if err != nil {
 		slog.Error("failed to create user, guard statements should stop this", "error", err)
+		return c.JSON(http.StatusInternalServerError, Reason("internal server error"))
 	}
 
-	return c.NoContent(http.StatusCreated)
+	return c.JSON(http.StatusCreated, User{
+		Username:  user.Username,
+		UserID:    user.Uid,
+		CreatedAt: user.CreatedAt,
+	})
 }
 
-var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]*$`)
-
-func ValidatePassword(password string) error {
-	if len([]rune(password)) < 3 {
-		return fmt.Errorf("password must be at least 3 characters")
-	}
-	return nil
-}
-
-const INVALID_USERNAME_ERROR = "username can only contain letters, numbers, and underscores"
-
-func ValidateUsername(username string) error {
-	length := len([]rune(username))
-	if length < 3 {
-		return errors.New("username must be at least 3 characters long")
-	}
-	if length > 20 {
-		return errors.New("username cannot be longer than 20 characters")
-	}
-	if !usernameRegex.MatchString(username) {
-		return errors.New(INVALID_USERNAME_ERROR)
-	}
+func (s Server) LoginAccount(c echo.Context) error {
 	return nil
 }

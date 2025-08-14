@@ -20,7 +20,7 @@ const docTemplate = `{
     "paths": {
         "/users": {
             "post": {
-                "description": "Create an account using provided username and password",
+                "description": "Create an account using provided username and password\nUsername can be between 3-20 characters.\nPassword must ba at least 3 characters.",
                 "consumes": [
                     "application/json"
                 ],
@@ -38,42 +38,79 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/server.RegisterAccountRequest"
+                            "$ref": "#/definitions/server.UserCredentials"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created"
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/server.User"
+                        }
                     },
                     "400": {
-                        "description": "Malformed credentials",
+                        "description": "Unallowed credentials",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/server.ErrorReason"
                         }
                     },
                     "409": {
-                        "description": "Username unavailable",
+                        "description": "Username already exists",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/server.ErrorReason"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error"
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
                     }
                 }
             }
         }
     },
     "definitions": {
-        "server.RegisterAccountRequest": {
+        "server.ErrorReason": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "example": "\u003creason for failure\u003e"
+                }
+            }
+        },
+        "server.User": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "userId": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "username": {
+                    "type": "string",
+                    "example": "JohnDoe"
+                }
+            }
+        },
+        "server.UserCredentials": {
             "type": "object",
             "properties": {
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 3,
+                    "example": "Password123"
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 4,
+                    "example": "JohnDoe"
                 }
             }
         }
@@ -82,7 +119,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
+	Version:          "",
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},

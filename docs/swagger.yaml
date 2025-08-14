@@ -1,9 +1,32 @@
 definitions:
-  server.RegisterAccountRequest:
+  server.ErrorReason:
+    properties:
+      reason:
+        example: <reason for failure>
+        type: string
+    type: object
+  server.User:
+    properties:
+      createdAt:
+        format: date-time
+        type: string
+      userId:
+        example: 12
+        type: integer
+      username:
+        example: JohnDoe
+        type: string
+    type: object
+  server.UserCredentials:
     properties:
       password:
+        example: Password123
+        minLength: 3
         type: string
       username:
+        example: JohnDoe
+        maxLength: 20
+        minLength: 4
         type: string
     type: object
 info:
@@ -12,35 +35,41 @@ info:
   license:
     name: MIT
   title: Chess API
-  version: "1.0"
 paths:
   /users:
     post:
       consumes:
       - application/json
-      description: Create an account using provided username and password
+      description: |-
+        Create an account using provided username and password
+        Username can be between 3-20 characters.
+        Password must ba at least 3 characters.
       parameters:
       - description: Register Account
         in: body
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/server.RegisterAccountRequest'
+          $ref: '#/definitions/server.UserCredentials'
       produces:
       - application/json
       responses:
         "201":
           description: Created
+          schema:
+            $ref: '#/definitions/server.User'
         "400":
-          description: Malformed credentials
+          description: Unallowed credentials
           schema:
-            type: string
+            $ref: '#/definitions/server.ErrorReason'
         "409":
-          description: Username unavailable
+          description: Username already exists
           schema:
-            type: string
+            $ref: '#/definitions/server.ErrorReason'
         "500":
           description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
       summary: Create an account
       tags:
       - users
