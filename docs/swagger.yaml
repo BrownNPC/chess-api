@@ -1,0 +1,47 @@
+definitions:
+  server.RegisterAccountRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: chess api for playing chess online.
+  license:
+    name: MIT
+  title: Chess API
+  version: "1.0"
+paths:
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Create an account using provided username and password
+      parameters:
+      - description: Register Account
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.RegisterAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Malformed credentials
+          schema:
+            type: string
+        "409":
+          description: Username unavailable
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+      summary: Create an account
+      tags:
+      - users
+swagger: "2.0"
