@@ -33,7 +33,7 @@ go.work.sum
 .vscode/
 
 # air
-tmp/
+tmp
 
 #sqlite
 sqlite*
