@@ -1,3 +1,5 @@
+PRAGMA journal_mode = WAL;
+
 CREATE TABLE users (
     uid INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,

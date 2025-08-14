@@ -16,13 +16,10 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
-// echo-swagger middleware
-
 //go:embed schema.sql
 var DATABASE_SCHEMA string
 
 //	@title			Chess API
-//	@version		1.0
 //	@description	chess api for playing chess online.
 
 // @license.name	MIT
@@ -40,12 +37,13 @@ func main() {
 	e := echo.New()
 
 	srv := server.NewServer(dbconn)
-	srv.RegisterRoutes(e)
 
 	e.GET("/", func(c echo.Context) error {
 		return c.Redirect(302, "/swagger/index.html")
 	})
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
+
+	srv.RegisterRoutes(e)
 
 	err = e.Start(":8080")
 	if err != nil {

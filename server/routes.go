@@ -1,7 +1,9 @@
 // route registration
 package server
 
-import "github.com/labstack/echo/v4"
+import (
+	"github.com/labstack/echo/v4"
+)
 
 // RegisterRoutes registers all the routes for this api server.
 

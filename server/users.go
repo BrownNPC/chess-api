@@ -29,7 +29,7 @@ type RegisterAccountRequest struct {
 //	@Param			payload	body	RegisterAccountRequest	true	"Register Account"
 //	@Success		201
 //	@Failure		400	{string}	string	"Malformed credentials"
-//	@Failure		409	{string}	string	"Username unavailable"
+//	@Failure		409	{string}	string	"Username already exists"
 //	@Failure		500
 //
 //	@Router			/users [post]
@@ -37,7 +37,7 @@ func (s *Server) RegisterAccount(c echo.Context) error {
 	var req RegisterAccountRequest
 
 	if err := c.Bind(&req); err != nil {
-		return c.String(http.StatusBadRequest, "Username and Password required")
+		return c.String(http.StatusBadRequest, "Json body contains syntax error")
 	}
 	if err := ValidateUsername(req.Username); err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
@@ -46,13 +46,9 @@ func (s *Server) RegisterAccount(c echo.Context) error {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 	// check if username already exists
-
 	user, err := s.DB.GetUserByUsername(c.Request().Context(), req.Username)
-	if user.Username == "" {
+	if user.Username != "" {
 		return c.String(http.StatusConflict, "Username already taken")
-	}
-	if err != nil {
-		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -65,6 +61,9 @@ func (s *Server) RegisterAccount(c echo.Context) error {
 		Username:     req.Username,
 		PasswordHash: string(passwordHash),
 	})
+	if err != nil {
+		slog.Error("failed to create user, guard statements should stop this", "error", err)
+	}
 
 	return c.NoContent(http.StatusCreated)
 }

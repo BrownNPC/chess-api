@@ -34,3 +34,6 @@ go.work.sum
 
 # air
 tmp/
+
+#sqlite
+sqlite*
