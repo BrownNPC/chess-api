@@ -20,7 +20,7 @@ const docTemplate = `{
     "paths": {
         "/auth/login": {
             "post": {
-                "description": "Log into an account using provided username and password. And get a JWT\nUsername can be between 3-20 characters.\nPassword must be at least 3 characters.",
+                "description": "Log into an account using provided username and password. And get an API key.\nUsername can be between 3-20 characters.\nPassword must be at least 3 characters.",
                 "consumes": [
                     "application/json"
                 ],
@@ -30,7 +30,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Log into an account and get a JWT",
+                "summary": "Log into an account and get an API key.",
                 "parameters": [
                     {
                         "description": "Login Account",
@@ -46,7 +46,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/server.JwtResponse"
+                            "$ref": "#/definitions/server.ApiKeyResponse"
                         }
                     },
                     "401": {
@@ -64,9 +64,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/games": {
+            "post": {
+                "description": "Authorized users can make a match and receive a sharable link for anyone to play with them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "games"
+                ],
+                "summary": "Create a match, and get a sharable link.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Must contain JWT from auth/login in the format Bearer: \u003cJWT\u003e",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/users": {
             "post": {
-                "description": "Create an account using provided username and password.\nUsername can be between 3-20 characters.\nPassword must ba at least 3 characters.",
+                "description": "Username can be between 3-20 characters.\nPassword must be at least 3 characters.",
                 "consumes": [
                     "application/json"
                 ],
@@ -76,7 +98,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Create an account",
+                "summary": "Create an account using provided username and password.",
                 "parameters": [
                     {
                         "description": "Register Account",
@@ -90,9 +112,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Api Key",
                         "schema": {
-                            "$ref": "#/definitions/server.User"
+                            "$ref": "#/definitions/server.ApiKeyResponse"
                         }
                     },
                     "400": {
@@ -118,38 +140,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "server.ApiKeyResponse": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                }
+            }
+        },
         "server.ErrorReason": {
             "type": "object",
             "properties": {
                 "reason": {
                     "type": "string",
                     "example": "reason"
-                }
-            }
-        },
-        "server.JwtResponse": {
-            "type": "object",
-            "properties": {
-                "jwt": {
-                    "type": "string",
-                    "example": "xxxx.yyyy.zzzz"
-                }
-            }
-        },
-        "server.User": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "userId": {
-                    "type": "integer",
-                    "example": 12
-                },
-                "username": {
-                    "type": "string",
-                    "example": "JohnDoe"
                 }
             }
         },

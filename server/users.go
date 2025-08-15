@@ -23,25 +23,26 @@ type UserCredentials struct {
 	Username string `json:"username" minLength:"4" maxLength:"20" example:"JohnDoe"`
 	Password string `json:"password" minLength:"3" example:"Password123"`
 }
+type ApiKeyResponse struct {
+	ApiKey string `json:"apiKey"`
+}
 
-// Create an account using provided username and password.
-// respond String if error, status created + no body if success
+// Create a user account using provided username and password.
 //
-//	@Summary		Create an account
-//	@Description	Create an account using provided username and password.
+//	@Summary		Create an account using provided username and password.
 //	@Description	Username can be between 3-20 characters.
-//	@Description	Password must ba at least 3 characters.
+//	@Description	Password must be at least 3 characters.
 //
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
 //	@Param			payload	body		UserCredentials	true	"Register Account"
-//	@Success		201		{object}	User
+//	@Success		201		{object}	ApiKeyResponse "Api Key"
 //	@Failure		400		{object}	ErrorReason	"Invalid credentials"
 //	@Failure		409		{object}	ErrorReason	"Username already exists"
 //	@Failure		500		{object}	ErrorReason
 //	@Router			/users [post]
-func (s Server) RegisterAccount(c echo.Context) error {
+func (s Server) RegisterUserAccount(c echo.Context) error {
 	var req UserCredentials
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, REASON_JSON_SYNTAX_ERROR)
@@ -66,12 +67,14 @@ func (s Server) RegisterAccount(c echo.Context) error {
 	user, err = s.DB.CreateUser(c.Request().Context(), db.CreateUserParams{
 		Username:     req.Username,
 		PasswordHash: string(passwordHash),
+		ApiKey:       s.newApiKey(req.Username),
 	})
+
 	if err != nil {
 		slog.Error("failed to create user, guard statements should stop this", "error", err)
 		return c.JSON(http.StatusInternalServerError, REASON_INTERNAL_ERROR)
 	}
 
-	return c.JSON(http.StatusCreated, UserFromDbUser(user))
+	return c.JSON(http.StatusCreated, ApiKeyResponse{user.ApiKey})
 }
 

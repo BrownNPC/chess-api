@@ -11,23 +11,25 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (username, password_hash)
-VALUES (?, ?)
-RETURNING uid, username, password_hash, created_at
+INSERT INTO users (username, password_hash, api_key)
+VALUES (?, ?, ?)
+RETURNING uid, username, password_hash, api_key, created_at
 `
 
 type CreateUserParams struct {
 	Username     string
 	PasswordHash string
+	ApiKey       string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.PasswordHash)
+	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.PasswordHash, arg.ApiKey)
 	var i User
 	err := row.Scan(
 		&i.Uid,
 		&i.Username,
 		&i.PasswordHash,
+		&i.ApiKey,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -73,7 +75,7 @@ func (q *Queries) GetGameById(ctx context.Context, id int64) (Game, error) {
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT uid, username, password_hash, created_at FROM users
+SELECT uid, username, password_hash, api_key, created_at FROM users
 WHERE uid = ?
 `
 
@@ -84,13 +86,14 @@ func (q *Queries) GetUserById(ctx context.Context, uid int64) (User, error) {
 		&i.Uid,
 		&i.Username,
 		&i.PasswordHash,
+		&i.ApiKey,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT uid, username, password_hash, created_at FROM users
+SELECT uid, username, password_hash, api_key, created_at FROM users
 WHERE username = ?
 `
 
@@ -101,6 +104,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.Uid,
 		&i.Username,
 		&i.PasswordHash,
+		&i.ApiKey,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -197,7 +201,7 @@ func (q *Queries) ListGamesByPlayer(ctx context.Context, arg ListGamesByPlayerPa
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT uid, username, password_hash, created_at FROM users
+SELECT uid, username, password_hash, api_key, created_at FROM users
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
 `
@@ -220,6 +224,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.Uid,
 			&i.Username,
 			&i.PasswordHash,
+			&i.ApiKey,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -269,11 +274,27 @@ func (q *Queries) StoreGame(ctx context.Context, arg StoreGameParams) (Game, err
 	return i, err
 }
 
+const updateUserAPIKey = `-- name: UpdateUserAPIKey :exec
+UPDATE users
+SET api_key = ?1
+WHERE username = ?2
+`
+
+type UpdateUserAPIKeyParams struct {
+	ApiKey   string
+	Username string
+}
+
+func (q *Queries) UpdateUserAPIKey(ctx context.Context, arg UpdateUserAPIKeyParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserAPIKey, arg.ApiKey, arg.Username)
+	return err
+}
+
 const updateUserPassword = `-- name: UpdateUserPassword :one
 UPDATE users
 SET password_hash= ?
 WHERE uid = ?
-RETURNING uid, username, password_hash, created_at
+RETURNING uid, username, password_hash, api_key, created_at
 `
 
 type UpdateUserPasswordParams struct {
@@ -288,6 +309,7 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 		&i.Uid,
 		&i.Username,
 		&i.PasswordHash,
+		&i.ApiKey,
 		&i.CreatedAt,
 	)
 	return i, err

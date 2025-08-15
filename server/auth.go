@@ -1,30 +1,29 @@
 package server
 
 import (
+	"api/db"
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// JwtClaims defines custom JWT claims along with registered claims.
-type JwtClaims struct {
-	User
-	jwt.RegisteredClaims
-}
-
-func (s Server) JwtAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+// AuthApiKeyMiddleware checks the Authorization header for a Bearer <api key>.
+// It sets the context's username field to the username of whom the key belongs to.
+// Otherwise, username is an empty string.
+func (s Server) AuthApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		// extract Authorization: Bearer <token>
+		// extract Authorization header
 		ah := c.Request().Header.Get(echo.HeaderAuthorization) // case-insensitive
 		if ah == "" {
-			return c.JSON(http.StatusForbidden, REASON_INVALID_AUTH_HEADER)
+			// unauthorized user, set username to empty string
+			c.Set("username", "")
+			return next(c)
 		}
-
+		// seperate "Bearer" from api key
 		bearerJwt := strings.Split(ah, " ")
 		if len(bearerJwt) != 2 {
 			return c.JSON(http.StatusForbidden, REASON_INVALID_AUTH_HEADER)
@@ -33,17 +32,15 @@ func (s Server) JwtAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// get rid of the "Bearer "
 		encodedToken := bearerJwt[1]
 		// parse encoded token
-		token, err := jwt.ParseWithClaims(encodedToken, &JwtClaims{}, func(t *jwt.Token) (any, error) {
+		token, err := jwt.Parse(encodedToken, func(t *jwt.Token) (any, error) {
 			return s.JwtSecret, nil
-		})
-		// failed to parse?
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()})) // failed to parse?
 		if err != nil {
-			slog.Error("failed to parse jwt", "error", err)
-			return c.JSON(http.StatusForbidden, REASON_INVALID_AUTH_HEADER)
+			return c.JSON(http.StatusUnauthorized, REASON_INVALID_AUTH_HEADER)
 		}
-		if claims, ok := token.Claims.(*JwtClaims); ok {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			// valid token, continue
-			c.Set("user", claims)
+			c.Set("username", claims["jti"])
 			return next(c)
 		} else {
 			panic("Failed to decode jwt into struct. This means the jwt we are sending is wrong")
@@ -51,14 +48,11 @@ func (s Server) JwtAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-type JwtResponse struct {
-	JWT string `json:"jwt" example:"xxxx.yyyy.zzzz"`
-}
-
-// LoginAccount accepts username and password, and returns a JWT
+// GetApiKeyTryRenew accepts username and password, and returns an api key.
+// Accounts can be created from /users
 //
-//	@Summary		Log into an account and get a JWT
-//	@Description	Log into an account using provided username and password. And get a JWT
+//	@Summary		Log into an account and get an API key.
+//	@Description	Log into an account using provided username and password. And get an API key.
 //	@Description	Username can be between 3-20 characters.
 //	@Description	Password must be at least 3 characters.
 //
@@ -66,11 +60,11 @@ type JwtResponse struct {
 //	@Accept			json
 //	@Produce		json
 //	@Param			payload	body		UserCredentials	true	"Login Account"
-//	@Success		201		{object}	JwtResponse
+//	@Success		201		{object}    ApiKeyResponse
 //	@Failure		401		{object}	ErrorReason	"Invalid username/password"
 //	@Failure		500		{object}	ErrorReason
 //	@Router			/auth/login [post]
-func (s Server) LoginAccount(c echo.Context) error {
+func (s Server) GetApiKeyTryRenew(c echo.Context) error {
 	var req UserCredentials
 
 	if err := c.Bind(&req); err != nil {
@@ -91,22 +85,17 @@ func (s Server) LoginAccount(c echo.Context) error {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		return c.JSON(http.StatusUnauthorized, REASON_INVALID_CREDENTIALS)
 	}
-	// create jwt that expires in 1 day
-	claims := JwtClaims{
-		User: UserFromDbUser(user),
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+	_, ok := s.verifyApiKey(user.ApiKey)
+	if !ok { // api key expired
+		user.ApiKey = s.newApiKey(user.Username)
+		err := s.DB.UpdateUserAPIKey(c.Request().Context(), db.UpdateUserAPIKeyParams{
+			ApiKey:   user.ApiKey,
+			Username: req.Username,
+		})
+		if err != nil {
+			slog.Warn("could not update api key for user", "error", err)
+			return c.JSON(http.StatusInternalServerError, REASON_INTERNAL_ERROR)
+		}
 	}
-
-	// create jwt
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	finalJwt, err := token.SignedString(s.JwtSecret)
-	if err != nil {
-		slog.Error("Failed to sign jwt", "error", err)
-		return c.JSON(http.StatusInternalServerError, REASON_INTERNAL_ERROR)
-	}
-
-	return c.JSON(http.StatusOK, JwtResponse{JWT: finalJwt})
+	return c.JSON(http.StatusOK, ApiKeyResponse{user.ApiKey})
 }

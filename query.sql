@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (username, password_hash)
-VALUES (?, ?)
+INSERT INTO users (username, password_hash, api_key)
+VALUES (?, ?, ?)
 RETURNING *;
 
 -- name: GetUserById :one
@@ -21,6 +21,11 @@ UPDATE users
 SET password_hash= ?
 WHERE uid = ?
 RETURNING *;
+
+-- name: UpdateUserAPIKey :exec
+UPDATE users
+SET api_key = ?1
+WHERE username = ?2;
 
 -- name: DeleteUser :exec
 DELETE FROM users

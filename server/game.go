@@ -14,8 +14,14 @@ type Match struct {
 	White, Black chan MatchEvent
 }
 
-// Authorized user can make a match and receive a sharable link for anyone to play with them
+// Authorized users can make a match and receive a sharable link for anyone to play with them.
+// @Summary Create a match, and get a sharable link.
+// @Description Authorized users can make a match and receive a sharable link for anyone to play with them.
+// @Tags games
+// @Accept json
+// @Return json
+// @Param Authorization header string true "Must contain JWT from auth/login in the format Bearer: <JWT>"
+// @Router /games [post]
 func (s Server) Matchmaking(c echo.Context) error {
-
-	return c.JSON(200, c.Get("jwt").(*JwtClaims))
+	return c.JSON(200, c.Get("username"))
 }

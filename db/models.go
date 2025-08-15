@@ -21,5 +21,6 @@ type User struct {
 	Uid          int64
 	Username     string
 	PasswordHash string
+	ApiKey       string
 	CreatedAt    time.Time
 }

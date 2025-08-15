@@ -4,6 +4,8 @@ CREATE TABLE users (
     uid INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    -- jwt with expiry as the api key
+    api_key TEXT UNIQUE NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

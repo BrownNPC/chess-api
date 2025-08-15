@@ -1,26 +1,13 @@
 definitions:
+  server.ApiKeyResponse:
+    properties:
+      apiKey:
+        type: string
+    type: object
   server.ErrorReason:
     properties:
       reason:
         example: reason
-        type: string
-    type: object
-  server.JwtResponse:
-    properties:
-      jwt:
-        example: xxxx.yyyy.zzzz
-        type: string
-    type: object
-  server.User:
-    properties:
-      createdAt:
-        format: date-time
-        type: string
-      userId:
-        example: 12
-        type: integer
-      username:
-        example: JohnDoe
         type: string
     type: object
   server.UserCredentials:
@@ -47,7 +34,7 @@ paths:
       consumes:
       - application/json
       description: |-
-        Log into an account using provided username and password. And get a JWT
+        Log into an account using provided username and password. And get an API key.
         Username can be between 3-20 characters.
         Password must be at least 3 characters.
       parameters:
@@ -63,7 +50,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/server.JwtResponse'
+            $ref: '#/definitions/server.ApiKeyResponse'
         "401":
           description: Invalid username/password
           schema:
@@ -72,17 +59,32 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/server.ErrorReason'
-      summary: Log into an account and get a JWT
+      summary: Log into an account and get an API key.
       tags:
       - auth
+  /games:
+    post:
+      consumes:
+      - application/json
+      description: Authorized users can make a match and receive a sharable link for
+        anyone to play with them.
+      parameters:
+      - description: 'Must contain JWT from auth/login in the format Bearer: <JWT>'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses: {}
+      summary: Create a match, and get a sharable link.
+      tags:
+      - games
   /users:
     post:
       consumes:
       - application/json
       description: |-
-        Create an account using provided username and password.
         Username can be between 3-20 characters.
-        Password must ba at least 3 characters.
+        Password must be at least 3 characters.
       parameters:
       - description: Register Account
         in: body
@@ -94,9 +96,9 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Api Key
           schema:
-            $ref: '#/definitions/server.User'
+            $ref: '#/definitions/server.ApiKeyResponse'
         "400":
           description: Invalid credentials
           schema:
@@ -109,7 +111,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/server.ErrorReason'
-      summary: Create an account
+      summary: Create an account using provided username and password.
       tags:
       - users
 swagger: "2.0"
