@@ -64,8 +64,7 @@ func init() {
 		if err != nil {
 			log.Panicln("failed to create jwt secret", err)
 		}
-		rand.Reader.Read(JWT_SECRET)
-		_, err = f.Write(JWT_SECRET)
+		_, err = f.Write([]byte(rand.Text()))
 		if err != nil {
 			log.Panicln("failed to write jwt secret", err)
 		}

@@ -49,7 +49,7 @@ paths:
       description: |-
         Log into an account using provided username and password. And get a JWT
         Username can be between 3-20 characters.
-        Password must ba at least 3 characters.
+        Password must be at least 3 characters.
       parameters:
       - description: Login Account
         in: body
@@ -74,7 +74,7 @@ paths:
             $ref: '#/definitions/server.ErrorReason'
       summary: Log into an account and get a JWT
       tags:
-      - users
+      - auth
   /users:
     post:
       consumes:

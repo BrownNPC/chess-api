@@ -20,7 +20,7 @@ const docTemplate = `{
     "paths": {
         "/auth/login": {
             "post": {
-                "description": "Log into an account using provided username and password. And get a JWT\nUsername can be between 3-20 characters.\nPassword must ba at least 3 characters.",
+                "description": "Log into an account using provided username and password. And get a JWT\nUsername can be between 3-20 characters.\nPassword must be at least 3 characters.",
                 "consumes": [
                     "application/json"
                 ],
@@ -28,7 +28,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "auth"
                 ],
                 "summary": "Log into an account and get a JWT",
                 "parameters": [

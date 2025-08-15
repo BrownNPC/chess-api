@@ -10,4 +10,8 @@ import (
 func (s *Server) RegisterRoutes(e *echo.Echo) {
 	e.POST("/users", s.RegisterAccount)
 	e.POST("/auth/login", s.LoginAccount)
+
+	authenticated := e.Group("/game")
+	authenticated.Use(s.JwtAuthMiddleware)
+	authenticated.POST("/matchmaking", s.Matchmaking)
 }
