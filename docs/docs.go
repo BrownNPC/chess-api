@@ -18,9 +18,55 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "Log into an account using provided username and password. And get a JWT\nUsername can be between 3-20 characters.\nPassword must ba at least 3 characters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Log into an account and get a JWT",
+                "parameters": [
+                    {
+                        "description": "Login Account",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/server.UserCredentials"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/server.JwtResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid username/password",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
-                "description": "Create an account using provided username and password\nUsername can be between 3-20 characters.\nPassword must ba at least 3 characters.",
+                "description": "Create an account using provided username and password.\nUsername can be between 3-20 characters.\nPassword must ba at least 3 characters.",
                 "consumes": [
                     "application/json"
                 ],
@@ -50,7 +96,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Unallowed credentials",
+                        "description": "Invalid credentials",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorReason"
                         }
@@ -77,7 +123,16 @@ const docTemplate = `{
             "properties": {
                 "reason": {
                     "type": "string",
-                    "example": "\u003creason for failure\u003e"
+                    "example": "reason"
+                }
+            }
+        },
+        "server.JwtResponse": {
+            "type": "object",
+            "properties": {
+                "jwt": {
+                    "type": "string",
+                    "example": "xxxx.yyyy.zzzz"
                 }
             }
         },

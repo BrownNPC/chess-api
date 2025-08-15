@@ -6,22 +6,15 @@ import (
 )
 
 type Server struct {
-	DB  *db.Queries
-	SQL *sql.DB
+	DB        *db.Queries
+	SQL       *sql.DB
+	JwtSecret []byte
 }
 
-// Error reason
-type ErrorReason struct {
-	Reason string `json:"reason" example:"<reason for failure>"`
-}
-
-func Reason(err string) ErrorReason {
-	return ErrorReason{err}
-}
-
-func NewServer(dbConnection *sql.DB) Server {
+func NewServer(dbConnection *sql.DB, jwtSecret []byte) Server {
 	return Server{
-		DB:  db.New(dbConnection),
-		SQL: dbConnection,
+		DB:        db.New(dbConnection),
+		SQL:       dbConnection,
+		JwtSecret: jwtSecret,
 	}
 }

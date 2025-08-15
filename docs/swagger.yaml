@@ -2,7 +2,13 @@ definitions:
   server.ErrorReason:
     properties:
       reason:
-        example: <reason for failure>
+        example: reason
+        type: string
+    type: object
+  server.JwtResponse:
+    properties:
+      jwt:
+        example: xxxx.yyyy.zzzz
         type: string
     type: object
   server.User:
@@ -36,12 +42,45 @@ info:
     name: MIT
   title: Chess API
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Log into an account using provided username and password. And get a JWT
+        Username can be between 3-20 characters.
+        Password must ba at least 3 characters.
+      parameters:
+      - description: Login Account
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.UserCredentials'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/server.JwtResponse'
+        "401":
+          description: Invalid username/password
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+      summary: Log into an account and get a JWT
+      tags:
+      - users
   /users:
     post:
       consumes:
       - application/json
       description: |-
-        Create an account using provided username and password
+        Create an account using provided username and password.
         Username can be between 3-20 characters.
         Password must ba at least 3 characters.
       parameters:
@@ -59,7 +98,7 @@ paths:
           schema:
             $ref: '#/definitions/server.User'
         "400":
-          description: Unallowed credentials
+          description: Invalid credentials
           schema:
             $ref: '#/definitions/server.ErrorReason'
         "409":

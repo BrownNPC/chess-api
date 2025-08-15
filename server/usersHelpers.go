@@ -1,6 +1,7 @@
 package server
 
 import (
+	"api/db"
 	"errors"
 	"fmt"
 	"regexp"
@@ -29,4 +30,24 @@ func ValidateUsername(username string) error {
 		return errors.New(INVALID_USERNAME_ERROR)
 	}
 	return nil
+}
+
+func ValidateUsernameAndPassword(username, password string) error {
+
+	// validate username
+	if err := ValidateUsername(username); err != nil {
+		return err
+	}
+	// validate password
+	if err := ValidatePassword(password); err != nil {
+		return err
+	}
+	return nil
+}
+func UserFromDbUser(user db.User) User {
+	return User{
+		UserID:    user.Uid,
+		Username:  user.Username,
+		CreatedAt: user.CreatedAt,
+	}
 }

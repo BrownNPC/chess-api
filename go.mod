@@ -1,8 +1,9 @@
 module api
 
-go 1.23.4
+go 1.24.1
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/swaggo/swag v1.16.6

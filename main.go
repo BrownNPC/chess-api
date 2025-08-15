@@ -4,9 +4,11 @@ package main
 import (
 	"api/server"
 	"context"
+	"crypto/rand"
 	"database/sql"
 	_ "embed"
 	"log"
+	"os"
 
 	_ "api/docs"
 
@@ -36,7 +38,7 @@ func main() {
 
 	e := echo.New()
 
-	srv := server.NewServer(dbconn)
+	srv := server.NewServer(dbconn, JWT_SECRET)
 
 	e.GET("/", func(c echo.Context) error {
 		return c.Redirect(302, "/swagger/index.html")
@@ -48,5 +50,26 @@ func main() {
 	err = e.Start(":8080")
 	if err != nil {
 		log.Fatal("Server shutdown", err)
+	}
+}
+
+var JWT_SECRET = make([]byte, 32)
+
+func init() {
+	secret, err := os.ReadFile("JWT_SECRET")
+	if err != nil {
+		// create secret if file doesnt exist
+		f, err := os.Create("JWT_SECRET")
+		defer f.Close()
+		if err != nil {
+			log.Panicln("failed to create jwt secret", err)
+		}
+		rand.Reader.Read(JWT_SECRET)
+		_, err = f.Write(JWT_SECRET)
+		if err != nil {
+			log.Panicln("failed to write jwt secret", err)
+		}
+	} else {
+		JWT_SECRET = secret
 	}
 }

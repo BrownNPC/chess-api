@@ -37,3 +37,4 @@ tmp
 
 #sqlite
 sqlite*
+JWT_SECRET
