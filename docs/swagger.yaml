@@ -62,22 +62,25 @@ paths:
       summary: Log into an account and get an API key.
       tags:
       - auth
-  /games:
+  /matches:
     post:
       consumes:
       - application/json
-      description: Authorized users can make a match and receive a sharable link for
-        anyone to play with them.
+      description: |-
+        Authorized users can make a match and receive a game id, which other users can use to join the match.
+        You must be the first one to use the id at /matches/:id if you want to be the one who picks the colors.
+        Duration maxes out at 43200 (12 hours) and increment maxes out at 60.
+        field "black":bool is whether to join as the black pieces or white pieces
       parameters:
-      - description: 'Must contain JWT from auth/login in the format Bearer: <JWT>'
+      - description: 'Must contain ApiKey in the format Bearer: <apiKey>'
         in: header
         name: Authorization
         required: true
         type: string
       responses: {}
-      summary: Create a match, and get a sharable link.
+      summary: Create a match, and get a sharable match id.
       tags:
-      - games
+      - matches
   /users:
     post:
       consumes:

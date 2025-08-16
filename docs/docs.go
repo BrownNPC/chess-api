@@ -64,20 +64,20 @@ const docTemplate = `{
                 }
             }
         },
-        "/games": {
+        "/matches": {
             "post": {
-                "description": "Authorized users can make a match and receive a sharable link for anyone to play with them.",
+                "description": "Authorized users can make a match and receive a game id, which other users can use to join the match.\nYou must be the first one to use the id at /matches/:id if you want to be the one who picks the colors.\nDuration maxes out at 43200 (12 hours) and increment maxes out at 60.\nfield \"black\":bool is whether to join as the black pieces or white pieces",
                 "consumes": [
                     "application/json"
                 ],
                 "tags": [
-                    "games"
+                    "matches"
                 ],
-                "summary": "Create a match, and get a sharable link.",
+                "summary": "Create a match, and get a sharable match id.",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Must contain JWT from auth/login in the format Bearer: \u003cJWT\u003e",
+                        "description": "Must contain ApiKey in the format Bearer: \u003capiKey\u003e",
                         "name": "Authorization",
                         "in": "header",
                         "required": true

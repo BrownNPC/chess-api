@@ -11,7 +11,8 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 
 	e.POST("/users", s.RegisterUserAccount)
 
-	e.POST("/games", s.Matchmaking, s.AuthApiKeyMiddleware)
+	e.POST("/matches", s.CreateMatch, s.AuthApiKeyMiddleware)
+	e.GET("/matches/:id", s.JoinMatch, s.AuthApiKeyMiddleware)
 
 	e.POST("/auth/login", s.GetApiKeyTryRenew)
 }
