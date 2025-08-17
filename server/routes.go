@@ -12,7 +12,10 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 	e.POST("/users", s.RegisterUserAccount)
 
 	e.POST("/matches", s.CreateMatch, s.AuthApiKeyMiddleware)
-	e.GET("/matches/:id", s.JoinMatch, s.AuthApiKeyMiddleware)
+	e.GET("/matches/:id/play", s.JoinMatch, s.AuthApiKeyMiddleware)
+	e.PUT("/matches/:id", s.PutMove, s.AuthApiKeyMiddleware)
+	e.GET("/matches/:id", s.GetBoardString)
+	e.GET("/matches/:id/img", s.GetBoardImage, s.AuthApiKeyMiddleware)
 
 	e.POST("/auth/login", s.GetApiKeyTryRenew)
 }

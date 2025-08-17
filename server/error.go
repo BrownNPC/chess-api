@@ -5,7 +5,7 @@ var (
 	REASON_INTERNAL_ERROR      = Reason("internal server error")
 	REASON_INVALID_CREDENTIALS = Reason("invalid username/password")
 	REASON_INVALID_AUTH_HEADER = Reason("invalid Authorization header")
-	REASON_UNAUTHORIZED        = Reason("not logged in")
+	REASON_UNAUTHORIZED        = Reason("no api key in Authorization header. You must be authorized for this endpoint")
 )
 
 // Error reason
