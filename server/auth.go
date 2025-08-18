@@ -40,7 +40,21 @@ func (s Server) AuthApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			// valid token, continue
-			c.Set("username", claims["jti"])
+			username := claims["jti"].(string)
+			user, err := s.DB.GetUserByUsername(c.Request().Context(), username)
+			if err != nil {
+				return c.JSON(http.StatusForbidden, Reason("user does not exist"))
+			}
+			// check if token has expired
+			if user.ApiKey != encodedToken {
+				return c.JSON(http.StatusForbidden, Reason("Key has expired"))
+			}
+			_, ok := s.verifyApiKey(encodedToken)
+			if !ok {
+				return c.JSON(http.StatusForbidden, Reason("Key has expired"))
+			}
+
+			c.Set("username", username)
 			return next(c)
 		} else {
 			panic("Failed to decode jwt into struct. This means the jwt we are sending is wrong")
@@ -60,7 +74,7 @@ func (s Server) AuthApiKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			payload	body		UserCredentials	true	"Login Account"
-//	@Success		201		{object}    ApiKeyResponse
+//	@Success		201		{object}	ApiKeyResponse
 //	@Failure		401		{object}	ErrorReason	"Invalid username/password"
 //	@Failure		500		{object}	ErrorReason
 //	@Router			/auth/login [post]
@@ -85,7 +99,11 @@ func (s Server) GetApiKeyTryRenew(c echo.Context) error {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		return c.JSON(http.StatusUnauthorized, REASON_INVALID_CREDENTIALS)
 	}
-	_, ok := s.verifyApiKey(user.ApiKey)
+	username, ok := s.verifyApiKey(user.ApiKey)
+	if username != user.Username {
+		slog.Warn("Username stored in api key does not match user we got from database. This should never happen.")
+		return c.JSON(http.StatusInternalServerError, REASON_INTERNAL_ERROR)
+	}
 	if !ok { // api key expired
 		user.ApiKey = s.newApiKey(user.Username)
 		err := s.DB.UpdateUserAPIKey(c.Request().Context(), db.UpdateUserAPIKeyParams{

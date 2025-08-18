@@ -17,7 +17,6 @@ func NewGamesStorage() *MatchStorage {
 	}
 }
 
-
 // get a match, ok is false if doesnt exist
 func (s *MatchStorage) GetMatch(id string) (match *Match, ok bool) {
 	s.mu.RLock()

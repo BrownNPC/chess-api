@@ -37,9 +37,9 @@ type ApiKeyResponse struct {
 //	@Accept			json
 //	@Produce		json
 //	@Param			payload	body		UserCredentials	true	"Register Account"
-//	@Success		201		{object}	ApiKeyResponse "Api Key"
-//	@Failure		400		{object}	ErrorReason	"Invalid credentials"
-//	@Failure		409		{object}	ErrorReason	"Username already exists"
+//	@Success		201		{object}	ApiKeyResponse	"Api Key"
+//	@Failure		400		{object}	ErrorReason		"Invalid credentials"
+//	@Failure		409		{object}	ErrorReason		"Username already exists"
 //	@Failure		500		{object}	ErrorReason
 //	@Router			/users [post]
 func (s Server) RegisterUserAccount(c echo.Context) error {
@@ -78,3 +78,30 @@ func (s Server) RegisterUserAccount(c echo.Context) error {
 	return c.JSON(http.StatusCreated, ApiKeyResponse{user.ApiKey})
 }
 
+// @Summary	Delete an account
+//
+// @Tags		users
+// @Accept		json
+// @Produce	json
+// @Param		Authorization	header		string	true	"Must contain ApiKey in the format Bearer: apiKey"
+// @Success	200				{object}	string	"deleted"
+// @Failure	401				{object}	ErrorReason
+// @Failure	500				{object}	ErrorReason
+// @Router		/users [delete]
+func (s Server) DeleteUserAccount(c echo.Context) error {
+	username := c.Get("username").(string)
+	if username == "" {
+		return c.JSON(http.StatusUnauthorized, REASON_UNAUTHORIZED)
+	}
+	user, err := s.DB.GetUserByUsername(c.Request().Context(), username)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, REASON_INTERNAL_ERROR)
+	}
+	err = s.DB.DeleteUser(c.Request().Context(), user.Uid)
+	if err != nil {
+		slog.Warn("user exists in DB but we cannot delete it", "username", username)
+		return c.JSON(http.StatusInternalServerError, REASON_INTERNAL_ERROR)
+	}
+
+	return c.JSON(http.StatusOK, "deleted")
+}

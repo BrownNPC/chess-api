@@ -1,13 +1,73 @@
 definitions:
+  game.Event:
+    properties:
+      endTime:
+        description: when this match will be deleted if the game does not end.
+        format: date-time
+        type: string
+      move:
+        description: Move in UCI notation
+        example: e2e4
+        type: string
+      oponentUsername:
+        example: JohnDoe
+        type: string
+      opponentBlack:
+        description: is the opponent using the black pieces
+        example: false
+        type: boolean
+      startTime:
+        description: when this match was creatd
+        format: date-time
+        type: string
+      type:
+        $ref: '#/definitions/game.EventType'
+    type: object
+  game.EventType:
+    enum:
+    - move
+    - opponent
+    - resign
+    type: string
+    x-enum-varnames:
+    - Move
+    - OpponentInfo
+    - Resign
   server.ApiKeyResponse:
     properties:
       apiKey:
         type: string
     type: object
+  server.CreateMatchRequest:
+    properties:
+      duration:
+        description: duration in hours
+        example: 12
+        type: integer
+    type: object
   server.ErrorReason:
     properties:
       reason:
         example: reason
+        type: string
+    type: object
+  server.JoinMatchRequest:
+    properties:
+      blackPieces:
+        description: whether to use black pieces instead of white
+        example: false
+        type: boolean
+    type: object
+  server.MatchCreatedResponse:
+    properties:
+      matchId:
+        example: AB2C21
+        type: string
+    type: object
+  server.PutMoveRequest:
+    properties:
+      move:
+        example: e2e4
         type: string
     type: object
   server.UserCredentials:
@@ -67,21 +127,236 @@ paths:
       consumes:
       - application/json
       description: |-
-        Authorized users can make a match and receive a game id, which other users can use to join the match.
-        You must be the first one to use the id at /matches/:id if you want to be the one who picks the colors.
-        Duration maxes out at 43200 (12 hours) and increment maxes out at 60.
-        field "black":bool is whether to join as the black pieces or white pieces
+        **Authorized users** can make a match and receive a game id, which other users can use to join the match.
+        ### Note:
+        ### You must be the first one to send a GET to /matches/:id if you want to be the one who picks the colors.
+        ### duration maxes out at 12 hours
       parameters:
-      - description: 'Must contain ApiKey in the format Bearer: <apiKey>'
+      - description: 'Must contain ApiKey in the format Bearer: apiKey'
         in: header
         name: Authorization
         required: true
         type: string
-      responses: {}
+      - description: Duration of the match in hours. Max is 12
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.CreateMatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Match Created
+          schema:
+            $ref: '#/definitions/server.MatchCreatedResponse'
+        "400":
+          description: Invalid json body
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "403":
+          description: Invalid Authorization header
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
       summary: Create a match, and get a sharable match id.
       tags:
       - matches
+  /matches/{id}:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Get the board position in FEN format.
+        Unauthorized clients can use this.
+      parameters:
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: board FEN
+          schema:
+            type: string
+        "400":
+          description: Invalid json body / invalid move
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "404":
+          description: Match not found
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+      summary: Get board in FEN format.
+      tags:
+      - matches
+    put:
+      consumes:
+      - application/json
+      description: |-
+        You must be in-game to post a move.
+        The move needs to be in UCI format. eg. `e2e4`
+        You cannot make a move if it's not your turn.
+      parameters:
+      - description: 'Must contain ApiKey in the format Bearer: apiKey'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: move in UCI notation. eg. e2e4
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.PutMoveRequest'
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: Invalid json body / invalid move
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "404":
+          description: Match not found
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+      summary: players in-game can make moves when it's their turn.
+      tags:
+      - matches
+  /matches/{id}/img:
+    get:
+      consumes:
+      - application/json
+      description: Get the board position in SVG Image format.
+      parameters:
+      - description: 'Must contain ApiKey in the format Bearer: apiKey'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: SVG image
+          schema:
+            type: file
+        "400":
+          description: Invalid json body / invalid move
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "404":
+          description: Match not found
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+      summary: Get board in SVG format.
+      tags:
+      - matches
+  /matches/{id}/play:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Authorized users can join a match using the game id.
+        The first person to join choeses their color.
+        ## On success the server will send `SSE` messages whose payloads are JSON.
+        Events don't send this entire object: each event uses only some fields.
+        Look [here](https://github.com/BrownNPC/chess-api/blob/master/server/game/game.go#L33) to see **which fields are used by which event.**
+      parameters:
+      - description: 'Must contain ApiKey in the format Bearer: apiKey'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Match ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: '`blackPieces` is used to pick if you want to play as the black
+          pieces. This is ignored if you are not the first one to join.'
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.JoinMatchRequest'
+      produces:
+      - application/json
+      - text/event-stream
+      responses:
+        "200":
+          description: 'SSE stream — each `data:` payload uses some fields of this
+            JSON object (Content-Type: text/event-stream). Events dont sent this whole
+            object.'
+          schema:
+            $ref: '#/definitions/game.Event'
+        "400":
+          description: Invalid json body
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "404":
+          description: Match not found
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+      summary: Join a match and receive events from the server.
+      tags:
+      - matches
   /users:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 'Must contain ApiKey in the format Bearer: apiKey'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: deleted
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorReason'
+      summary: Delete an account
+      tags:
+      - users
     post:
       consumes:
       - application/json

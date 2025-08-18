@@ -20,16 +20,21 @@ type MatchCreatedResponse struct {
 }
 
 // Authorized users can make a match and receive a game id, which other people can use to join the match.
-// @Summary Create a match, and get a sharable match id.
-// @Description Authorized users can make a match and receive a game id, which other users can use to join the match.
-// @Description You must be the first one to use the id at /matches/:id if you want to be the one who picks the colors.
-// @Description Duration maxes out at 43200 (12 hours) and increment maxes out at 60.
-// @Description field "black":bool is whether to join as the black pieces or white pieces
-// @Tags matches
-// @Accept json
-// @Return json
-// @Param Authorization header string true "Must contain ApiKey in the format Bearer: <apiKey>"
-// @Router /matches [post]
+//
+//	@Summary		Create a match, and get a sharable match id.
+//	@Description	**Authorized users** can make a match and receive a game id, which other users can use to join the match.
+//	@Description	### Note:
+//	@Description	### You must be the first one to send a GET to /matches/:id if you want to be the one who picks the colors.
+//	@Description	### duration maxes out at 12 hours
+//	@Tags			matches
+//	@Param			Authorization	header	string				true	"Must contain ApiKey in the format Bearer: apiKey"
+//	@Param			payload			body	CreateMatchRequest	true	"Duration of the match in hours. Max is 12"
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	MatchCreatedResponse	"Match Created"
+//	@Failure		403	{object}	ErrorReason				"Invalid Authorization header"
+//	@Failure		400	{object}	ErrorReason				"Invalid json body"
+//	@Router			/matches [post]
 func (s Server) CreateMatch(c echo.Context) error {
 	username := c.Get("username").(string)
 	if username == "" {
@@ -39,14 +44,15 @@ func (s Server) CreateMatch(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, REASON_JSON_SYNTAX_ERROR)
 	}
-	Match := s.GameStorage.NewMatch(req.Duration * time.Hour)
+	if req.Duration == 0 {
+		return c.JSON(http.StatusBadRequest, Reason("Duration not provided"))
+	}
+	Match := s.GameStorage.NewMatch(time.Duration(req.Duration) * time.Hour)
 	return c.JSON(200, MatchCreatedResponse{Match.ID})
 }
 
 type CreateMatchRequest struct {
-	// duration in hours
-	// max is 12 hours
-	Duration time.Duration `json:"duration" example:"120"`
+	Duration int `json:"duration" example:"12"` // duration in hours
 }
 
 type JoinMatchRequest struct {
@@ -54,6 +60,26 @@ type JoinMatchRequest struct {
 	BlackPieces bool `json:"blackPieces" example:"false"`
 }
 
+// Authorized users can join an existing match using a game id.
+//
+//	@Summary		Join a match and receive events from the server.
+//	@Description	Authorized users can join a match using the game id.
+//	@Description	The first person to join choeses their color.
+//	@Description	## On success the server will send `SSE` messages whose payloads are JSON.
+//	@Description	Events don't send this entire object: each event uses only some fields.
+//	@Description	Look [here](https://github.com/BrownNPC/chess-api/blob/master/server/game/game.go#L33) to see **which fields are used by which event.**
+//	@Tags			matches
+//	@Accept			json
+//	@Produce		json
+//	@Produce		event-stream
+//	@Param			Authorization	header		string				true	"Must contain ApiKey in the format Bearer: apiKey"
+//	@Param			id				path		string				true	"Match ID"
+//	@Param			payload			body		JoinMatchRequest	true	"`blackPieces` is used to pick if you want to play as the black pieces. This is ignored if you are not the first one to join."
+//	@Success		200				{object}	game.Event			"SSE stream — each `data:` payload uses some fields of this JSON object (Content-Type: text/event-stream). Events dont sent this whole object."
+//	@Failure		403				{object}	ErrorReason			"Unauthorized"
+//	@Failure		404				{object}	ErrorReason			"Match not found"
+//	@Failure		400				{object}	ErrorReason			"Invalid json body"
+//	@Router			/matches/{id}/play [get]
 func (s Server) JoinMatch(c echo.Context) error {
 	username := c.Get("username").(string)
 	if username == "" {
@@ -72,8 +98,6 @@ func (s Server) JoinMatch(c echo.Context) error {
 	}
 
 	// SSE headers
-	// Ensure the writer supports Flush
-
 	w := c.Response()
 	w.Header().Set(echo.HeaderContentType, "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -145,6 +169,21 @@ type PutMoveRequest struct {
 	Move string `json:"move" example:"e2e4"`
 }
 
+// @Summary		players in-game can make moves when it's their turn.
+// @Description	You must be in-game to post a move.
+// @Description	The move needs to be in UCI format. eg. `e2e4`
+// @Description	You cannot make a move if it's not your turn.
+// @Param			Authorization	header	string			true	"Must contain ApiKey in the format Bearer: apiKey"
+// @Param			payload			body	PutMoveRequest	true	"move in UCI notation. eg. e2e4"
+// @Param			id				path	string			true	"Match ID"
+// @Tags			matches
+// @Accept			json
+// @Produce		json
+// @Failure		403	{object}	ErrorReason	"Unauthorized"
+// @Failure		404	{object}	ErrorReason	"Match not found"
+// @Failure		400	{object}	ErrorReason	"Invalid json body / invalid move"
+// @Success		200	{object}	string		"ok"
+// @Router			/matches/{id}  [put]
 func (s Server) PutMove(c echo.Context) error {
 	username := c.Get("username").(string)
 	matchId := c.Param("id")
@@ -174,7 +213,19 @@ func (s Server) PutMove(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, "ok")
 }
-func (s Server) GetBoardString(c echo.Context) error {
+
+// @Summary		Get board in FEN format.
+// @Description	Get the board position in FEN format.
+// @Description	Unauthorized clients can use this.
+// @Tags			matches
+// @Accept			json
+// @Produce		json
+// @Failure		404	{object}	ErrorReason	"Match not found"
+// @Failure		400	{object}	ErrorReason	"Invalid json body / invalid move"
+// @Success		200	{object}	string		"board FEN"
+// @Param			id	path		string		true	"Match ID"
+// @Router			/matches/{id}  [get]
+func (s Server) GetBoardFEN(c echo.Context) error {
 	matchId := c.Param("id")
 
 	Match, ok := s.GameStorage.GetMatch(matchId)
@@ -184,9 +235,22 @@ func (s Server) GetBoardString(c echo.Context) error {
 
 	Match.RLock()
 	defer Match.RUnlock()
-	var position string = Match.Chess.Position().Board().Draw()
+	var position string = Match.Chess.Position().Board().String()
 	return c.String(http.StatusOK, position)
 }
+
+// @Summary		Get board in SVG format.
+// @Description	Get the board position in SVG Image format.
+// @Tags			matches
+// @Accept			json
+// @Produce		json
+// @Param			Authorization	header		string		true	"Must contain ApiKey in the format Bearer: apiKey"
+// @Param			id				path		string		true	"Match ID"
+// @Failure		403				{object}	ErrorReason	"Unauthorized"
+// @Failure		404				{object}	ErrorReason	"Match not found"
+// @Failure		400				{object}	ErrorReason	"Invalid json body / invalid move"
+// @Success		200				{file}		string		"SVG image"
+// @Router			/matches/{id}/img  [get]
 func (s Server) GetBoardImage(c echo.Context) error {
 	username := c.Get("username").(string)
 	if username == "" {

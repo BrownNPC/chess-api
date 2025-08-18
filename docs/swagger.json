@@ -57,8 +57,11 @@
         },
         "/matches": {
             "post": {
-                "description": "Authorized users can make a match and receive a game id, which other users can use to join the match.\nYou must be the first one to use the id at /matches/:id if you want to be the one who picks the colors.\nDuration maxes out at 43200 (12 hours) and increment maxes out at 60.\nfield \"black\":bool is whether to join as the black pieces or white pieces",
+                "description": "**Authorized users** can make a match and receive a game id, which other users can use to join the match.\n### Note:\n### You must be the first one to send a GET to /matches/:id if you want to be the one who picks the colors.\n### duration maxes out at 12 hours",
                 "consumes": [
+                    "application/json"
+                ],
+                "produces": [
                     "application/json"
                 ],
                 "tags": [
@@ -68,13 +71,273 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Must contain ApiKey in the format Bearer: \u003capiKey\u003e",
+                        "description": "Must contain ApiKey in the format Bearer: apiKey",
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "description": "Duration of the match in hours. Max is 12",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/server.CreateMatchRequest"
+                        }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "Match Created",
+                        "schema": {
+                            "$ref": "#/definitions/server.MatchCreatedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid json body",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid Authorization header",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    }
+                }
+            }
+        },
+        "/matches/{id}": {
+            "get": {
+                "description": "Get the board position in FEN format.\nUnauthorized clients can use this.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Get board in FEN format.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Match ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "board FEN",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid json body / invalid move",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "404": {
+                        "description": "Match not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "You must be in-game to post a move.\nThe move needs to be in UCI format. eg. `e2e4`\nYou cannot make a move if it's not your turn.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "players in-game can make moves when it's their turn.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Must contain ApiKey in the format Bearer: apiKey",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "move in UCI notation. eg. e2e4",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/server.PutMoveRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Match ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid json body / invalid move",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "404": {
+                        "description": "Match not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    }
+                }
+            }
+        },
+        "/matches/{id}/img": {
+            "get": {
+                "description": "Get the board position in SVG Image format.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Get board in SVG format.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Must contain ApiKey in the format Bearer: apiKey",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Match ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SVG image",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid json body / invalid move",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "404": {
+                        "description": "Match not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    }
+                }
+            }
+        },
+        "/matches/{id}/play": {
+            "get": {
+                "description": "Authorized users can join a match using the game id.\nThe first person to join choeses their color.\n## On success the server will send `SSE` messages whose payloads are JSON.\nEvents don't send this entire object: each event uses only some fields.\nLook [here](https://github.com/BrownNPC/chess-api/blob/master/server/game/game.go#L33) to see **which fields are used by which event.**",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json",
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "matches"
+                ],
+                "summary": "Join a match and receive events from the server.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Must contain ApiKey in the format Bearer: apiKey",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Match ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "`blackPieces` is used to pick if you want to play as the black pieces. This is ignored if you are not the first one to join.",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/server.JoinMatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SSE stream — each `data:` payload uses some fields of this JSON object (Content-Type: text/event-stream). Events dont sent this whole object.",
+                        "schema": {
+                            "$ref": "#/definitions/game.Event"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid json body",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "404": {
+                        "description": "Match not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    }
+                }
             }
         },
         "/users": {
@@ -127,15 +390,111 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete an account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Must contain ApiKey in the format Bearer: apiKey",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "deleted",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorReason"
+                        }
+                    }
+                }
             }
         }
     },
     "definitions": {
+        "game.Event": {
+            "type": "object",
+            "properties": {
+                "endTime": {
+                    "description": "when this match will be deleted if the game does not end.",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "move": {
+                    "description": "Move in UCI notation",
+                    "type": "string",
+                    "example": "e2e4"
+                },
+                "oponentUsername": {
+                    "type": "string",
+                    "example": "JohnDoe"
+                },
+                "opponentBlack": {
+                    "description": "is the opponent using the black pieces",
+                    "type": "boolean",
+                    "example": false
+                },
+                "startTime": {
+                    "description": "when this match was creatd",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "type": {
+                    "$ref": "#/definitions/game.EventType"
+                }
+            }
+        },
+        "game.EventType": {
+            "type": "string",
+            "enum": [
+                "move",
+                "opponent",
+                "resign"
+            ],
+            "x-enum-varnames": [
+                "Move",
+                "OpponentInfo",
+                "Resign"
+            ]
+        },
         "server.ApiKeyResponse": {
             "type": "object",
             "properties": {
                 "apiKey": {
                     "type": "string"
+                }
+            }
+        },
+        "server.CreateMatchRequest": {
+            "type": "object",
+            "properties": {
+                "duration": {
+                    "description": "duration in hours",
+                    "type": "integer",
+                    "example": 12
                 }
             }
         },
@@ -145,6 +504,34 @@
                 "reason": {
                     "type": "string",
                     "example": "reason"
+                }
+            }
+        },
+        "server.JoinMatchRequest": {
+            "type": "object",
+            "properties": {
+                "blackPieces": {
+                    "description": "whether to use black pieces instead of white",
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "server.MatchCreatedResponse": {
+            "type": "object",
+            "properties": {
+                "matchId": {
+                    "type": "string",
+                    "example": "AB2C21"
+                }
+            }
+        },
+        "server.PutMoveRequest": {
+            "type": "object",
+            "properties": {
+                "move": {
+                    "type": "string",
+                    "example": "e2e4"
                 }
             }
         },

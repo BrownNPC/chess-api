@@ -15,19 +15,17 @@ type EventType string
 
 const (
 	Move         EventType = "move"
-	OpponentInfo           = "opponent"
-	Resign                 = "resign"
+	OpponentInfo EventType = "opponent"
+	Resign       EventType = "resign"
 )
 
 type Event struct {
-	Type EventType
-	// Move in UCI notation
-	Move            string `json:"move,omitempty"`
-	OponentUsername string `json:"oponentUsername,omitempty"`
-	// white or black
-	OpponentBlack bool       `json:"opponentBlack" example:"false"`
-	StartTime     *time.Time `json:"startTime,omitempty" format:"date-time"`
-	EndTime       *time.Time `json:"endTime,omitempty" format:"date-time"`
+	Type            EventType
+	Move            string     `json:"move,omitempty" example:"e2e4"` // Move in UCI notation
+	OponentUsername string     `json:"oponentUsername,omitempty" example:"JohnDoe"`
+	OpponentBlack   bool       `json:"opponentBlack" example:"false"`          // is the opponent using the black pieces
+	StartTime       *time.Time `json:"startTime,omitempty" format:"date-time"` // when this match was creatd
+	EndTime         *time.Time `json:"endTime,omitempty" format:"date-time"`   // when this match will be deleted if the game does not end.
 }
 
 func EventMove(opponentMove string) Event {
